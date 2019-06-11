@@ -1,0 +1,6 @@
+# Remove build and temporary files
+build
+proj
+*.log
+*.jou
+*.o
