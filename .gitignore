@@ -4,3 +4,5 @@ proj
 *.log
 *.jou
 *.o
+tvgen/*.txt
+tvgen/tvgen
