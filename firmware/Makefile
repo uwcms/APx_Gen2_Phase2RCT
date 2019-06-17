@@ -23,5 +23,7 @@ export TOP_DIR = $(abspath $(PWD)/..)
 include $(TOP_DIR)/submodules/ruckus/system_vivado.mk
 
 # Run simulation and open waveform display
-xsimgui: xsim
+xsimgui: ../$(PROJECT)/apx_gen2/apx_gen2_project.sim/sim_1/behav/xsim/tb_behav.wdb
 	vivado -source open_sim.tcl
+
+../build/$(PROJECT)/apx_gen2_project.sim/sim_1/behav/xsim/tb_behav.wdb: xsim
