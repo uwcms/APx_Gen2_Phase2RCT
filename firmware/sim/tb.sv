@@ -70,14 +70,14 @@ endfunction
 module tb ();
     // Parameters are set externally
     // With ruckus this is done by setting the SIM_PARAMETERS variable, for example:
-    // make xsim SIM_PARAMETERS="in_file=tv_in.txt out_file=tv_out.txt"
-    parameter in_file="";
-    parameter out_file="";
-    parameter ref_file=""; // Not yet supported
+    // make xsim SIM_PARAMETERS="tv_in=tv_in.txt tv_out=tv_out.txt"
+    parameter tv_in="";
+    parameter tv_out="";
+    parameter tv_ref=""; // Not yet supported
 
-    const string in_file_str = in_file;
-    const string out_file_str = out_file;
-    const string ref_file_str = ref_file;
+    const string tv_in_str = tv_in;
+    const string tv_out_str = tv_out;
+    const string tv_ref_str = tv_ref;
 
     // Clock and reset signal declaration
     bit clk = 0;
@@ -95,20 +95,20 @@ module tb ();
     int fdr = 0, fdw = 0, fdref = 0;
 
     initial begin
-        if (in_file_str.len() == 0) $error("in_file needs to be set");
+        if (tv_in_str.len() == 0) $error("tv_in needs to be set");
 
-        fdr = $fopen(in_file_str, "r");
+        fdr = $fopen(tv_in_str, "r");
         if (fdr == 0) begin
-            $error("Unable to open input file: %s", in_file_str);
+            $error("Unable to open input file: %s", tv_in_str);
             $finish;
         end
 
 
-        if (out_file_str.len() == 0) begin
-            $warning("out_file isn't set, no output results will be written!");
+        if (tv_out_str.len() == 0) begin
+            $warning("tv_out isn't set, no output results will be written!");
         end else begin
-            fdw = $fopen(out_file_str, "w");
-            if (fdw == 0) $error("Unable to open output file: %s", out_file_str);
+            fdw = $fopen(tv_out_str, "w");
+            if (fdw == 0) $error("Unable to open output file: %s", tv_out_str);
 
             $fwrite(fdw, "# Link output vector file from firmware RTL\n\n");
             // TODO: Work on the timestamp
@@ -218,7 +218,7 @@ module tb ();
     end
 
     always @ (posedge clk) begin
-        // Only write output if out_file is defined
+        // Only write output if tv_out is defined
         if (ready && fdw) begin
             $fwrite(fdw, "%3d  ", cycle);
 
