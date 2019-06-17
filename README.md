@@ -2,7 +2,29 @@
 
 A refactored Phase2 RCT HLS algorithm for Gen2 hardware.
 
-## Test vector generation
+## Building
+
+Running ```make``` will start the HLS compilation and export.
+
+## Simulation
+
+For HLS simulation:
+```bash
+make hls-csim tv_in=/hls/vivado_hls/data/test_in.txt tv_out=/hls/vivado_hls/data/test_out.txt
+```
+
+Firmware simulation is done as:
+```bash
+make xsim tv_in=/hls/vivado_hls/data/test_in.txt tv_out=/hls/vivado_hls/data/test_out.txt
+```
+
+The resulting HLS testbench can be open by doing:
+```bash
+cd firmware
+make xsim-gui
+```
+
+## Test Vectors
 A C++ library exists in ```common``` that facilitates handling of test vectors.
 
 The Algo HLS testbench also usew this library to parse the input test vector and
