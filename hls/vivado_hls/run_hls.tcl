@@ -16,11 +16,11 @@ foreach arg $::argv {
 }
 
 proc report_time { op_name time_start time_end  } {
- set time_taken [expr $time_end - $time_start]
- set time_s [expr ($time_taken / 1000) % 60]
- set time_m [expr ($time_taken / (1000*60)) % 60]
- set time_h [expr ($time_taken / (1000*60*60)) % 24]
- puts "***** ${op_name} COMPLETED IN ${time_h}h${time_m}m${time_s}s *****"
+    set time_taken [expr $time_end - $time_start]
+    set time_s [expr ($time_taken / 1000) % 60]
+    set time_m [expr ($time_taken / (1000*60)) % 60]
+    set time_h [expr ($time_taken / (1000*60*60)) % 24]
+    puts "***** ${op_name} COMPLETED IN ${time_h}h${time_m}m${time_s}s *****"
 }
 
 # open the project, don't forget to reset
@@ -43,7 +43,7 @@ if {$opt(csim)} {
    set time_start [clock clicks -milliseconds]
    csim_design -argv "-r $opt(tv) -v"
    set time_end [clock clicks -milliseconds]
-   report_time "C SIMULATION" $time_start $time_end  
+   report_time "C SIMULATION" $time_start $time_end
 }
 
 if {$opt(synth)} {
@@ -65,6 +65,9 @@ if {$opt(synth)} {
       export_design -format ip_catalog
       set time_end [clock clicks -milliseconds]
       report_time "EXPORT IP" $time_start $time_end
+
+      puts "***** GENERATING WRAPPERS *****"
+      puts [exec python ../wrapper_generator.py src/algo_top_parameters.h --wrapper ../rtl/algo_top_wrapper.vhd]
    }
 }
 
