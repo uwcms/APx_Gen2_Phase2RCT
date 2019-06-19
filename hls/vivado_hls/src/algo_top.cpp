@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "sorter.h"
-
 using namespace std;
 using namespace algo;
 
@@ -12,14 +10,14 @@ using namespace algo;
 struct Crystal {
 	Crystal() : energy(0), timing(0), spike(false) {};
 
-	Crystal(uint16_t i) {
+	Crystal(ap_uint<14> i) {
 		this->energy = i;
 		this->timing = i >> 10;
-		this->spike = i >> 15;
+		this->spike = i >> 13;
 	}
 
 	inline operator uint16_t() {
-		return  ((uint16_t)(this->spike) << 15) |
+		return  ((uint16_t)(this->spike) << 13) |
 				((uint16_t)(this->timing) << 10) |
 				this->energy;
 	}
@@ -31,7 +29,7 @@ struct Crystal {
 #endif
 
 	ap_uint<10> energy;
-	ap_uint<5> timing;
+	ap_uint<3> timing;
 	bool spike;
 };
 
@@ -65,11 +63,17 @@ struct Cluster {
 				(uint32_t)this->et;
 	}
 
-	static void stitchEtaNeigbours(Cluster &A, Cluster &B);
-	static void stitchPhiNeigbours(Cluster &A, Cluster &B);
+	static void stitchEtaNeigbours(const Cluster Ai, const Cluster Bi, Cluster &Ao, Cluster &B);
+	static void stitchPhiNeigbours(const Cluster Ai, const Cluster Bi, Cluster &Ao, Cluster &B);
 
 	template <size_t ETA, size_t PHI>
-	static void stitchRegion(Cluster in[ETA][PHI], Cluster out[ETA][PHI]);
+	static void stitchRegion(const Cluster in[ETA][PHI], Cluster out[ETA][PHI]);
+
+#ifndef __SYNTHESIS__
+	string toString() const {
+		return "Cluster [" + to_string(this->tower_eta) + "(" + to_string(this->peak_eta) + ")," + to_string(this->tower_phi) + "(" + to_string(this->peak_phi) + ")]: " + to_string(this->et);
+	}
+#endif
 
 	uint16_t et;
 	ap_uint<4> tower_phi;
@@ -78,16 +82,124 @@ struct Cluster {
 	ap_uint<3> peak_eta;
 };
 
-void stitchEtaNeigbours(Cluster &A, Cluster &B) {
+void Cluster::stitchEtaNeigbours(const Cluster Ai, const Cluster Bi, Cluster &Ao, Cluster &Bo) {
+// For some reason if this pragma is set then the code doesn't synthetize properly...
+//#pragma HLS INLINE
 	// Assuming clusters are already next to each other
-	// TODO
+	if (Ai.peak_eta == 4 && Bi.peak_eta == 0) {
+		Ao = Ai;
+		Bo = Bi;
+		Ao.et = (Ai.et > Bi.et)? Ai.et + Bi.et : 0;
+		Bo.et = (Ai.et > Bi.et)? 0 : Ai.et + Bi.et;
+#ifndef __SYNTHESIS__
+		cout << "Stitching cluster cluster [" + to_string(Ai.tower_eta) + "," + to_string(Ai.tower_phi) + "] with [" <<
+				to_string(Bi.tower_eta) + "," + to_string(Bi.tower_phi) + "] in ETA" << endl;
+#endif
+	} else {
+		Ao = Ai;
+		Bo = Bi;
+	}
+}
+
+void Cluster::stitchPhiNeigbours(const Cluster Ai, const Cluster Bi, Cluster &Ao, Cluster &Bo) {
+// For some reason if this pragma is set then the code doesn't synthetize properly...
+//#pragma HLS INLINE
+	// Assuming clusters are already next to each other
+	if (Ai.peak_phi == 4 && Bi.peak_phi == 0) {
+		Ao = Ai;
+		Bo = Bi;
+		Ao.et = (Ai.et > Bi.et)? Ai.et + Bi.et : 0;
+		Bo.et = (Ai.et > Bi.et)? 0 : Ai.et + Bi.et;
+#ifndef __SYNTHESIS__
+		cout << "Stitching cluster cluster [" + to_string(Ai.tower_eta) + "," + to_string(Ai.tower_phi) + "] with [" <<
+				to_string(Bi.tower_eta) + "," + to_string(Bi.tower_phi) + "] in PHI" << endl;
+#endif
+	} else {
+		Ao = Ai;
+		Bo = Bi;
+	}
 }
 
 template <size_t ETA, size_t PHI>
-void Cluster::stitchRegion(Cluster in[ETA][PHI], Cluster out[ETA][PHI]) {
+void Cluster::stitchRegion(const Cluster in[ETA][PHI], Cluster out[ETA][PHI]) {
 #pragma HLS ARRAY_PARTITION variable=in complete dim=0
 #pragma HLS ARRAY_PARTITION variable=out complete dim=0
-	// TODO
+
+	// Stitch in eta
+	for (size_t phi = 0; phi < PHI; phi++) {
+#pragma LOOP UNROLL
+		Cluster eta_stitch[ETA];
+
+		for (size_t eta = 0; eta < ETA; eta++) {
+#pragma LOOP UNROLL
+			eta_stitch[eta] = in[eta][phi];
+		}
+
+		Cluster eta_stitch_step1[ETA];
+
+		for (size_t eta = 0; eta < ETA-1; eta+=2) {
+#pragma LOOP UNROLL
+			Cluster::stitchEtaNeigbours(eta_stitch[eta], eta_stitch[eta+1], eta_stitch_step1[eta], eta_stitch_step1[eta+1]);
+		}
+		if (ETA % 2) eta_stitch_step1[ETA-1] = eta_stitch[ETA-1];
+
+		Cluster eta_stitch_step2[ETA];
+
+		eta_stitch_step2[0] = eta_stitch_step1[0];
+		for (size_t eta = 1; eta < ETA; eta+=2) {
+#pragma LOOP UNROLL
+			Cluster::stitchEtaNeigbours(eta_stitch_step1[eta], eta_stitch_step1[eta+1], eta_stitch_step2[eta], eta_stitch_step2[eta+1]);
+		}
+
+		for (size_t eta = 0; eta < ETA; eta++) {
+#pragma LOOP UNROLL
+			out[eta][phi] = eta_stitch_step2[eta];
+		}
+	}
+
+	// Stitch in phi
+	for (size_t eta = 0; eta < ETA; eta++) {
+#pragma LOOP UNROLL
+		Cluster phi_stitch[PHI];
+
+		for (size_t phi = 0; phi < PHI; phi++) {
+#pragma LOOP UNROLL
+			phi_stitch[phi] = in[eta][phi];
+		}
+
+		Cluster phi_stitch_step1[PHI];
+
+		for (size_t phi = 0; phi < PHI-1; phi+=2) {
+#pragma LOOP UNROLL
+			Cluster::stitchPhiNeigbours(phi_stitch[phi], phi_stitch[phi+1], phi_stitch_step1[phi], phi_stitch_step1[phi+1]);
+		}
+		if (PHI % 2) phi_stitch_step1[PHI-1] = phi_stitch[PHI-1];
+
+		Cluster phi_stitch_step2[PHI];
+
+		phi_stitch_step2[0] = phi_stitch_step1[0];
+		for (size_t phi = 1; phi < PHI; phi+=2) {
+#pragma LOOP UNROLL
+			Cluster::stitchPhiNeigbours(phi_stitch_step1[phi], phi_stitch_step1[phi+1], phi_stitch_step2[phi], phi_stitch_step2[phi+1]);
+		}
+
+		for (size_t phi = 0; phi < PHI; phi++) {
+#pragma LOOP UNROLL
+			out[eta][phi] = phi_stitch_step2[phi];
+		}
+	}
+
+//	for (size_t eta = 0; eta < ETA; eta++) {
+//#pragma LOOP UNROLL
+//		for (size_t phi = 0; phi < PHI; phi++) {
+//#pragma LOOP UNROLL
+//			out[eta][phi] = in[eta][phi];
+//#ifndef __SYNTHESIS__
+//			cout << "in:  " << in[eta][phi].toString() << endl;
+//			cout << "out: " << out[eta][phi].toString() << endl;
+//#endif
+//		}
+//	}
 }
 
 /* Tower object definition */
@@ -194,54 +306,75 @@ inline uint16_t Tower::getPeakBinOf5(const uint16_t et[5], const uint16_t etSum)
 	return iAve;
 }
 
-inline Tower unpackInputLinkPair(hls::stream<axiword> &link1, hls::stream<axiword> &link2) {
-#pragma HLS INTERFACE axis port=link1
-#pragma HLS INTERFACE axis port=link2
+// Each input link carries the information of a 5x5 region
+// Last 16-bits are reserved for CRC
+inline Tower unpackInputLink(hls::stream<axiword> &link) {
+#pragma HLS INTERFACE axis port=link
 #pragma HLS INLINE
 
 	Tower tower;
 
+	uint8_t carry = 0;
+
 	for (size_t i = 0; i < N_WORDS_PER_FRAME; i++) {
 #ifndef __SYNTHESIS__
 		// Avoid simulation warnings
-		if (link1.empty() || link2.empty()) continue;
+		if (link.empty()) continue;
 #endif
 
-		uint64_t data[2] = {link1.read().data, link2.read().data};
+		uint64_t data = link.read().data;
 
 		switch (i) {
 		case 0: {
 			for (size_t k = 0; k < 4; k++) {
 #pragma LOOP UNROLL
-				tower.crystals[0][k] = Crystal(data[0] >> (k * 16));
-				tower.crystals[1][k] = Crystal(data[1] >> (k * 16));
+				tower.crystals[0][k] = Crystal(data >> (k * 14));
 			}
 		} break;
 		case 1: {
-			tower.crystals[0][4] = Crystal(data[0]);
-			tower.crystals[1][4] = Crystal(data[1]);
-			for (size_t k = 0; k < 3; k++) {
+			tower.crystals[0][4] = Crystal((data << 8) | carry);
+			for (size_t k = 0; k < 4; k++) {
 #pragma LOOP UNROLL
-				tower.crystals[2][k] = Crystal(data[0] >> ((k+1) * 16));
-				tower.crystals[3][k] = Crystal(data[1] >> ((k+1) * 16));
+				tower.crystals[1][k] = Crystal(data >> (k * 14 + 6));
 			}
 		} break;
 		case 2: {
-			for (size_t k = 0; k < 2; k++) {
+			tower.crystals[1][4] = Crystal(data);
+			for (size_t k = 0; k < 3; k++) {
 #pragma LOOP UNROLL
-				tower.crystals[2][k+3] = Crystal(data[0] >> (k * 16));
-				tower.crystals[3][k+3] = Crystal(data[1] >> (k * 16));
-				tower.crystals[4][k] = Crystal(data[0] >> ((k+2) * 16));
+				tower.crystals[2][k] = Crystal(data >> (k * 14 + 14));
 			}
 		} break;
 		case 3: {
+			tower.crystals[2][3] = Crystal((data << 8) | carry);
+			tower.crystals[2][4] = Crystal(data >> 6);
 			for (size_t k = 0; k < 3; k++) {
 #pragma LOOP UNROLL
-				tower.crystals[4][k+2] = Crystal(data[0] >> (k * 16));
+				tower.crystals[3][k] = Crystal(data >> (k * 14 + 20));
+			}
+		} break;
+		case 4: {
+			for (size_t k = 0; k < 2; k++) {
+#pragma LOOP UNROLL
+				tower.crystals[3][k+3] = Crystal(data >> (k * 14));
+			}
+			for (size_t k = 0; k < 2; k++) {
+#pragma LOOP UNROLL
+				tower.crystals[4][k] = Crystal(data >> (k * 14 + 28));
+			}
+		} break;
+		case 5: {
+			tower.crystals[4][2] = Crystal((data << 8) | carry);
+			for (size_t k = 0; k < 2; k++) {
+#pragma LOOP UNROLL
+				tower.crystals[4][k+3] = Crystal(data >> (k * 14 + 6));
 			}
 		} break;
 		default: break;
 		}
+
+		// Remaining data to be used on the next cycle
+		carry = data >> 56;
 	}
 //#ifndef __SYNTHESIS__
 //	cout << tower.toString() << endl;
@@ -267,8 +400,8 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 #pragma LOOP UNROLL
 		for (size_t j = 0; j < TOWERS_IN_PHI; j++) {
 #pragma LOOP UNROLL
-			const size_t linkn = (i * TOWERS_IN_PHI + j) * 2;
-			ecalTowers[i][j] = unpackInputLinkPair(link_in[linkn], link_in[linkn+1]);
+			const size_t linkn = (i * TOWERS_IN_PHI + j);
+			ecalTowers[i][j] = unpackInputLink(link_in[linkn]);
 		}
 	}
 
@@ -282,11 +415,17 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 #pragma LOOP UNROLL
 			uint16_t towerEt = 0;
 			ecalClusters[i][j] = ecalTowers[i][j].computeCluster(j, i, towerEt);
+#ifndef __SYNTHESIS__
+			cout << "cluster: " << ecalClusters[i][j].toString() << endl;
+#endif
 		}
 	}
 
 	// Step 3: Merge neighbor clusters
-	// TODO: Confusing original code, needs to be understood before proceeding
+	Cluster ecalClustersStitched[TOWERS_IN_ETA][TOWERS_IN_PHI];
+#pragma HLS ARRAY_PARTITION variable=ecalClustersStitched complete dim=0
+
+	Cluster::stitchRegion<TOWERS_IN_ETA,TOWERS_IN_PHI>(ecalClusters, ecalClustersStitched);
 
 	// Step 4: For some reason that I don't understand, we need to sort them. Use a simple interleaved bubble sorter for now.
 	Cluster unsortedEcalClusters[TOTAL_CLUSTERS];
@@ -296,14 +435,12 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 #pragma LOOP UNROLL
 		for (size_t j = 0; j < TOWERS_IN_PHI; j++) {
 #pragma LOOP UNROLL
-			unsortedEcalClusters[i * TOWERS_IN_PHI + j] = ecalClusters[i][j];
+			unsortedEcalClusters[i * TOWERS_IN_PHI + j] = ecalClustersStitched[i][j];
+#ifndef __SYNTHESIS__
+			cout << "stitched: " << unsortedEcalClusters[i * TOWERS_IN_PHI + j].toString() << endl;
+#endif
 		}
 	}
-
-	Cluster sortedEcalClusters[TOTAL_CLUSTERS];
-#pragma HLS ARRAY_PARTITION variable=unsortedEcalClusters complete dim=0
-
-	sort12<Cluster>(unsortedEcalClusters, sortedEcalClusters);
 
 	// Step 5: Pack the outputs
 	for (size_t i = 0; i < REQUIRED_OUTPUT_LINKS; i++) {
@@ -315,8 +452,8 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 			axiword r;
 			r.last = 0;
 			r.user = 0;
-			r.data = (uint32_t)(sortedEcalClusters[targetStartCluster + j]);
-			r.data |= (uint64_t)((uint32_t)(sortedEcalClusters[targetStartCluster + j + 1])) << 32;
+			r.data = (uint32_t)(unsortedEcalClusters[targetStartCluster + j]);
+			r.data |= (uint64_t)((uint32_t)(unsortedEcalClusters[targetStartCluster + j + 1])) << 32;
 			link_out[i].write(r);
 		}
 	}
