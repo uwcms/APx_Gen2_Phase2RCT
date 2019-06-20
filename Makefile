@@ -19,7 +19,7 @@ hls-csim:
 hls-gui:
 	(cd hls; make gui)
 
-xsim:
+xsim: hls
 ifndef tv_in
 	$(error tv_in needs to be defined!)
 endif
