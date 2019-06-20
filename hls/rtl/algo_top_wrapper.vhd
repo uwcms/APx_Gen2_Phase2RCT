@@ -168,7 +168,12 @@ begin
     link_out_0_TDATA => link_out_master(0).tData,
     link_out_0_TVALID => link_out_master(0).tValid,
     link_out_0_TLAST(0) => link_out_master(0).tLast,
-    link_out_0_TREADY => link_out_slave(0).tReady
+    link_out_0_TREADY => link_out_slave(0).tReady,
+    link_out_1_TUSER => link_out_master(1).tUser,
+    link_out_1_TDATA => link_out_master(1).tData,
+    link_out_1_TVALID => link_out_master(1).tValid,
+    link_out_1_TLAST(0) => link_out_master(1).tLast,
+    link_out_1_TREADY => link_out_slave(1).tReady
   );
 
 end rtl;

@@ -12,26 +12,19 @@
 //#define ALGO_PASSTHROUGH
 
 // Number of data words per processing cycle/frame
-const int N_WORDS_PER_FRAME	= 6;
+const int N_WORDS_PER_FRAME	= 9;
 
 /** Algorithm specific parameters **/
 #define TOWERS_IN_ETA 6
 #define TOWERS_IN_PHI 4
-
-#define TOTAL_CLUSTERS (TOWERS_IN_ETA * TOWERS_IN_PHI)
-#define MAX_CLUSTERS_PER_LINK (N_WORDS_PER_FRAME * 64 / 32)
-#define REQUIRED_OUTPUT_LINKS \
-	((TOTAL_CLUSTERS%MAX_CLUSTERS_PER_LINK)? \
-			(TOTAL_CLUSTERS / MAX_CLUSTERS_PER_LINK + 1) : \
-			TOTAL_CLUSTERS / MAX_CLUSTERS_PER_LINK)
 
 /** More common algorithm definitions, do not remove **/
 // N_INPUT_LINKS and N_OUTPUT_LINKS need to be numerically specified so that wrapper generators work.
 #define N_INPUT_LINKS	24
 #define N_OUTPUT_LINKS	2
 
-#define N_INPUT_WORDS_PER_FRAME N_WORDS_PER_FRAME
-#define N_OUTPUT_WORDS_PER_FRAME (MAX_CLUSTERS_PER_LINK/2)
+#define N_INPUT_WORDS_PER_FRAME 6	// 16G inputs
+#define N_OUTPUT_WORDS_PER_FRAME 9	// 25G outputs
 
 
 #endif /* !__ALGO_TOP_PARAMETERS_H__ */

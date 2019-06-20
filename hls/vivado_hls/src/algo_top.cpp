@@ -188,18 +188,6 @@ void Cluster::stitchRegion(const Cluster in[ETA][PHI], Cluster out[ETA][PHI]) {
 			out[eta][phi] = phi_stitch_step2[phi];
 		}
 	}
-
-//	for (size_t eta = 0; eta < ETA; eta++) {
-//#pragma LOOP UNROLL
-//		for (size_t phi = 0; phi < PHI; phi++) {
-//#pragma LOOP UNROLL
-//			out[eta][phi] = in[eta][phi];
-//#ifndef __SYNTHESIS__
-//			cout << "in:  " << in[eta][phi].toString() << endl;
-//			cout << "out: " << out[eta][phi].toString() << endl;
-//#endif
-//		}
-//	}
 }
 
 /* Tower object definition */
@@ -376,9 +364,6 @@ inline Tower unpackInputLink(hls::stream<axiword> &link) {
 		// Remaining data to be used on the next cycle
 		carry = data >> 56;
 	}
-//#ifndef __SYNTHESIS__
-//	cout << tower.toString() << endl;
-//#endif
 
 	return tower;
 }
@@ -416,7 +401,7 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 			uint16_t towerEt = 0;
 			ecalClusters[i][j] = ecalTowers[i][j].computeCluster(j, i, towerEt);
 #ifndef __SYNTHESIS__
-			cout << "cluster: " << ecalClusters[i][j].toString() << endl;
+			cout << "Clustering: " << ecalClusters[i][j].toString() << endl;
 #endif
 		}
 	}
@@ -427,35 +412,40 @@ void algo_top(hls::stream<axiword> link_in[N_INPUT_LINKS], hls::stream<axiword> 
 
 	Cluster::stitchRegion<TOWERS_IN_ETA,TOWERS_IN_PHI>(ecalClusters, ecalClustersStitched);
 
-	// Step 4: For some reason that I don't understand, we need to sort them. Use a simple interleaved bubble sorter for now.
-	Cluster unsortedEcalClusters[TOTAL_CLUSTERS];
-#pragma HLS ARRAY_PARTITION variable=unsortedEcalClusters complete dim=0
-
-	for (size_t i = 0; i < TOWERS_IN_ETA; i++) {
-#pragma LOOP UNROLL
-		for (size_t j = 0; j < TOWERS_IN_PHI; j++) {
-#pragma LOOP UNROLL
-			unsortedEcalClusters[i * TOWERS_IN_PHI + j] = ecalClustersStitched[i][j];
 #ifndef __SYNTHESIS__
-			cout << "stitched: " << unsortedEcalClusters[i * TOWERS_IN_PHI + j].toString() << endl;
-#endif
+	for (size_t i = 0; i < TOWERS_IN_ETA; i++) {
+		for (size_t j = 0; j < TOWERS_IN_PHI; j++) {
+			cout << "Stitched: " << ecalClustersStitched[i][j].toString() << endl;
 		}
 	}
+#endif
 
 	// Step 5: Pack the outputs
-	for (size_t i = 0; i < REQUIRED_OUTPUT_LINKS; i++) {
-		const size_t targetStartCluster = i * MAX_CLUSTERS_PER_LINK;
-		const size_t clustersInLink =
-				(targetStartCluster + MAX_CLUSTERS_PER_LINK > TOTAL_CLUSTERS)? TOTAL_CLUSTERS - targetStartCluster : MAX_CLUSTERS_PER_LINK;
+	for (size_t i = 0; i < N_OUTPUT_LINKS; i++) {
+#pragma LOOP UNROLL
+		const size_t start_eta = i * 16 / TOWERS_IN_PHI;
 
-		for (size_t j = 0; j < clustersInLink; j += 2) {
-			axiword r;
-			r.last = 0;
-			r.user = 0;
-			r.data = (uint32_t)(unsortedEcalClusters[targetStartCluster + j]);
-			r.data |= (uint64_t)((uint32_t)(unsortedEcalClusters[targetStartCluster + j + 1])) << 32;
+		for (size_t j = 0; j < N_OUTPUT_WORDS_PER_FRAME-1; j++) {
+#pragma LOOP UNROLL
+			const size_t eta_offset = (j/2) % 4;
+			const size_t phi = (j*2) % 4;
+
+			axiword r; r.last = 0; r.user = 0;
+
+			if (start_eta + eta_offset >= TOWERS_IN_ETA) {
+				r.data = 0;
+			} else {
+				r.data = ((uint64_t)ecalClustersStitched[start_eta + eta_offset][phi+1] << 32) |
+						 ((uint64_t)ecalClustersStitched[start_eta + eta_offset][phi]);
+			}
+
 			link_out[i].write(r);
+
 		}
+
+		// Last word is CRC
+		axiword r; r.last = 0; r.user = 0; r.data = 0;
+		link_out[i].write(r);
 	}
 
 #else
