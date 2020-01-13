@@ -6,6 +6,7 @@ array set opt {
     synth  1
     cosim  0
     export 1
+    impl   0
     tv_in  ""
     tv_out ""
     tv_ref ""
@@ -75,7 +76,11 @@ if {$opt(cosim)} {
 if {$opt(export)} {
   puts "***** EXPORT IP *****"
   set time_start [clock clicks -milliseconds]
-  export_design -format ip_catalog
+  if {$opt(impl)} {
+     export_design -format ip_catalog -flow impl
+  } else {
+     export_design -format ip_catalog
+  }
   set time_end [clock clicks -milliseconds]
   report_time "EXPORT IP" $time_start $time_end
 }
