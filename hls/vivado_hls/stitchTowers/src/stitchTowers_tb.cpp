@@ -10,13 +10,16 @@
 
 #include <argp.h>
 
-#include "algo_top_parameters.h"
-#include "algo_top.h"
+#include "../../ecal/src/ecal.h"
 
-#include "../../../common/APxLinkData.hh"
+#include "../../../../common/APxLinkData.hh"
+
+#include "stitchTowers.h"
 
 using namespace std;
-using namespace algo;
+using namespace ecal;
+using namespace stchTwr;
+
 
 /* argp declarations */
 const char *algo_top_tb_version = "algo_top_tb 1.0";
@@ -58,12 +61,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = { options, parse_opt, NULL, doc };
 
+#define N_INPUT_LINKS 2
+#define N_OUTPUT_LINKS 2
+
 int main(int argc, char **argv) {
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-	hls::stream<axiword> link_in[N_INPUT_LINKS];
-	hls::stream<axiword> link_out[N_OUTPUT_LINKS];
+	hls::stream<ecalInWord> link_in[N_INPUT_LINKS];
+	hls::stream<ecalOutWord> link_in_tmp[N_INPUT_LINKS];
+	hls::stream<ecalOutWord> link_out[N_OUTPUT_LINKS];
 	size_t loop_count = 1;
 
 	if (arguments.readfile) {
@@ -93,15 +100,18 @@ int main(int argc, char **argv) {
 
 	// Run the algorithm
 	for (size_t i = 0; i < loop_count; i++) {
-		algo_top(link_in, link_out);
+        ecal::processEcalLink(&link_in[0], &link_in_tmp[0]);
+        ecal::processEcalLink(&link_in[1], &link_in_tmp[1]);
+
+        stchTwr::stitchTowers(0, link_in_tmp, link_out);
 	}
 
 	APxLinkData datafile_out(N_OUTPUT_LINKS);
 
-	for (size_t i = 0; i < N_OUTPUT_WORDS_PER_FRAME * loop_count; i++) {
+	for (size_t i = 0; i < N_WORDS_PER_FRAME * loop_count; i++) {
 		for (size_t k = 0; k < N_OUTPUT_LINKS; k++) {
 			if (!link_out[k].empty()) {
-				axiword r = link_out[k].read();
+				ecalOutWord r = link_out[k].read();
 				datafile_out.add(i, k, {r.user, r.data});
 			}
 		}

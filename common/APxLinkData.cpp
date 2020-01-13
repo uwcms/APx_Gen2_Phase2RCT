@@ -45,21 +45,22 @@ void APxLinkData::write(const string filename) const {
 	of << "# Automatically generated" << endl;
 	of << endl;
 
-	of << "# CLK ";
+	of << "# Cycle ";
 	for (size_t k = 0; k < this->links; k++) {
 		of << "Link " << setw(2) << k << "                  ";
 	}
 	of << endl;
 
 	for (LinkDataMap::const_iterator it1 = this->data.begin(); it1 != this->data.end(); it1++) {
-		of << dec << setfill(' ') << setw(4) << it1->first << "  ";
+		//of << dec << setfill(' ') << setw(4) << it1->first << "  ";
+		of << "0x" << hex << uppercase << setfill('0') << setw(4) << it1->first << "  ";
 
 		for (size_t k = 0; k < this->links; k++) {
 			CycleDataMap::const_iterator it2 = it1->second.find(k);
 			if (it2 == it1->second.end()) {
 				of << "-    -                   ";
 			} else {
-				of << "0x" << hex << setfill('0') << setw(2) << it2->second.user << " 0x" << setw(16) << it2->second.data << "  ";
+				of << "0x" << hex << uppercase << setfill('0') << setw(2) << it2->second.user << " 0x" << setw(16) << it2->second.data << "  ";
 			}
 		}
 
@@ -79,7 +80,9 @@ void APxLinkData::read(const std::string filename) {
 		int cycle;
 
 		istringstream ss(line);
-		ss >> cycle;
+		ss >> std::hex >> cycle;
+
+		cout << "Cycle: " << cycle << endl;
 
 		for (size_t i = 0; i < this->links; i++) {
 			string user, data;
@@ -101,14 +104,14 @@ void APxLinkData::read(const std::string filename) {
 
 void APxLinkData::print() const {
 	for (LinkDataMap::const_iterator it1 = this->data.begin(); it1 != this->data.end(); it1++) {
-		cout << dec << setfill(' ') << setw(4) << it1->first << "  ";
+		cout << "0x" << hex << uppercase << setfill('0') << setw(4) << it1->first << "  ";
 
 		for (size_t k = 0; k < this->links; k++) {
 			CycleDataMap::const_iterator it2 = it1->second.find(k);
 			if (it2 == it1->second.end()) {
 				cout << "-    -                   ";
 			} else {
-				cout << "0x" << hex << setfill('0') << setw(2) << it2->second.user << " 0x" << setw(16) << it2->second.data << "  ";
+				cout << "0x" << hex << uppercase << setfill('0') << setw(2) << it2->second.user << " 0x" << setw(16) << it2->second.data << "  ";
 			}
 		}
 

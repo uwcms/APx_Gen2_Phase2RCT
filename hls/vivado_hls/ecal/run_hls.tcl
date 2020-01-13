@@ -3,9 +3,9 @@
 
 array set opt {
     csim   0
-    synth  0
+    synth  1
     cosim  0
-    export 0
+    export 1
     tv_in  ""
     tv_out ""
     tv_ref ""
@@ -26,7 +26,7 @@ proc report_time { op_name time_start time_end  } {
 }
 
 # open the project
-open_project proj
+open_project -reset proj
 
 # Add sources and specify top function
 source "./sources.tcl"
@@ -78,9 +78,6 @@ if {$opt(export)} {
   export_design -format ip_catalog
   set time_end [clock clicks -milliseconds]
   report_time "EXPORT IP" $time_start $time_end
-
-  puts "***** GENERATING WRAPPERS *****"
-  puts [exec python ../wrapper_generator.py src/algo_top_parameters.h --wrapper ../rtl/algo_top_wrapper.vhd]
 }
 
 exit
