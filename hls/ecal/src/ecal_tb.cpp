@@ -10,20 +10,12 @@
 
 #include <argp.h>
 
-#include "../../ecal/src/ecal.h"
+#include "ecal.h"
 
-#include "../../../../common/APxLinkData.hh"
-
-#include "stitchTowers.h"
+#include "../../../common/APxLinkData.hh"
 
 using namespace std;
 using namespace ecal;
-using namespace stchTwr;
-
-
-/* argp declarations */
-const char *algo_top_tb_version = "algo_top_tb 1.0";
-const char *algo_top_tb_bug_address = "<marcelo.vicente@cern.ch>";
 
 static char doc[] =
     "APx HLS Algo C/RTL simulation";
@@ -61,15 +53,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = { options, parse_opt, NULL, doc };
 
-#define N_INPUT_LINKS 2
-#define N_OUTPUT_LINKS 2
+#define N_INPUT_LINKS 1
+#define N_OUTPUT_LINKS 1
 
 int main(int argc, char **argv) {
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	hls::stream<ecalInWord> link_in[N_INPUT_LINKS];
-	hls::stream<ecalOutWord> link_in_tmp[N_INPUT_LINKS];
 	hls::stream<ecalOutWord> link_out[N_OUTPUT_LINKS];
 	size_t loop_count = 1;
 
@@ -100,10 +91,7 @@ int main(int argc, char **argv) {
 
 	// Run the algorithm
 	for (size_t i = 0; i < loop_count; i++) {
-        ecal::processEcalLink(&link_in[0], &link_in_tmp[0]);
-        ecal::processEcalLink(&link_in[1], &link_in_tmp[1]);
-
-        stchTwr::stitchTowers(0, link_in_tmp, link_out);
+		processEcalLink(link_in, link_out);
 	}
 
 	APxLinkData datafile_out(N_OUTPUT_LINKS);
@@ -140,4 +128,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-

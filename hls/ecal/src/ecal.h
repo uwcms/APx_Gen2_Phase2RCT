@@ -122,9 +122,9 @@ void packOutput(hls::stream<ecalOutWord> &link, ProcessedTower procTwr);
 
 RawTower unpackInput(hls::stream<ecalInWord> &link);
 
-void processEcalLink(hls::stream<ecalInWord> link_in[1],
-		hls::stream<ecalOutWord> link_out[1]);
-
 } // namespace ecal
+
+void processEcalLink(hls::stream<ecal::ecalInWord> link_in[0], hls::stream<ecal::ecalOutWord> link_out[0]);
+
 
 #endif /* !__ECAL_H__ */

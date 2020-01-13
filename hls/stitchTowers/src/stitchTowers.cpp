@@ -89,7 +89,7 @@ void stitch(bool stitchDir,
 	Bo.total_et = Bi.total_et;
 }
 
-void stchTwr::stitchTowers( bool stitchDir,
+void stitchTowers( bool stitchDir,
 		hls::stream<ecal::ecalOutWord> link_in[2],
 		hls::stream<ecal::ecalOutWord> link_out[2]){
 

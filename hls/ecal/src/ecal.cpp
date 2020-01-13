@@ -11,7 +11,6 @@
 using namespace std;
 using namespace ecal;
 
-
 ap_uint<3> getPeakBinOf5(const ap_uint<12> et[5], const ap_uint<16> etSum) {
 
 #pragma HLS ARRAY_PARTITION variable=et complete dim=0
@@ -181,9 +180,9 @@ void ecal::packOutput(hls::stream<ecalOutWord> &link, ProcessedTower procTwr) {
 }
 
 
-void ecal::processEcalLink(hls::stream<ecalInWord> link_in[1], hls::stream<ecalOutWord> link_out[1]) {
+void processEcalLink(hls::stream<ecalInWord> link_in[0], hls::stream<ecalOutWord> link_out[0]) {
 
-//#pragma HLS INTERFACE ap_ctrl_hs register port=return
+#pragma HLS INTERFACE ap_ctrl_hs register port=return
 #pragma HLS INTERFACE axis port=link_in
 #pragma HLS INTERFACE axis port=link_out
 

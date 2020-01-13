@@ -11,13 +11,14 @@
 namespace stchTwr {
 
 void packOutput(hls::stream<ecal::ecalOutWord> &link, ecal::ProcessedTower cluster);
+
 ecal::ProcessedTower unpackInput(hls::stream<ecal::ecalOutWord> &link);
+
+} //namespace stchTwr
 
 void stitchTowers(
 	bool stitchDir,
 	hls::stream<ecal::ecalOutWord> link_in[2],
 	hls::stream<ecal::ecalOutWord> link_out[2]);
-
-} //namespace stchTwr
 
 #endif /* !__STITCH_TOWERS_H__ */
