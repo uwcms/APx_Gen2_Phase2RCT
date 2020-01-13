@@ -82,8 +82,6 @@ void APxLinkData::read(const std::string filename) {
 		istringstream ss(line);
 		ss >> std::hex >> cycle;
 
-		cout << "Cycle: " << cycle << endl;
-
 		for (size_t i = 0; i < this->links; i++) {
 			string user, data;
 			ss >> user;
